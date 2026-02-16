@@ -74,9 +74,6 @@ type ProductFormData = z.infer<typeof productSchema>;
 type Category = { id: string; name: string };
 type Style = { id: string; name: string };
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-
 function DashboardContent() {
   const { toast } = useToast();
   const firestore = useFirestore();
@@ -569,38 +566,27 @@ function DashboardContent() {
 export default function AdminDashboard() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-        setLoginError("Authentication service is not available.");
+    if (!auth || !ADMIN_EMAIL) {
+        setLoginError("Authentication service or admin email is not configured.");
         return;
     };
-
-    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-        setLoginError("Admin credentials are not configured in the environment.");
-        return;
-    }
-
-    if (password !== ADMIN_PASSWORD) {
-      setLoginError('Incorrect password. Please try again.');
-      return;
-    }
 
     setIsLoggingIn(true);
     setLoginError(null);
     try {
-      await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        try {
-          await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-        } catch (creationError: any) {
-          setLoginError(`Failed to create admin account: ${creationError.message}`);
-        }
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        setLoginError("Login failed. Please check your credentials. The admin user may need to be created in the Firebase Console first.");
       } else {
         setLoginError(`Login failed: ${error.message}`);
       }
@@ -639,22 +625,34 @@ export default function AdminDashboard() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle>Admin Access</CardTitle>
-          <CardDescription>Enter the password to access the dashboard.</CardDescription>
+          <CardDescription>Enter the admin credentials to access the dashboard.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+             <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoggingIn}
+              required
+            />
             <Input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoggingIn}
+              required
             />
             <Button type="submit" disabled={isLoggingIn} className="w-full">
               {isLoggingIn ? 'Logging In...' : 'Login'}
             </Button>
             {loginError && <p className="text-sm font-medium text-destructive text-center">{loginError}</p>}
           </form>
+          <p className="mt-4 text-xs text-center text-muted-foreground">
+              Note: For first-time setup, you must create the admin user in your Firebase Console (Authentication &gt; Add user).
+          </p>
         </CardContent>
       </Card>
     </div>
