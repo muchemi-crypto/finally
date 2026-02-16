@@ -74,8 +74,8 @@ type ProductFormData = z.infer<typeof productSchema>;
 type Category = { id: string; name: string };
 type Style = { id: string; name: string };
 
-const ADMIN_EMAIL = 'admin@runway.com';
-const ADMIN_PASSWORD = 'Mmm@29315122';
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 function DashboardContent() {
   const { toast } = useToast();
@@ -579,6 +579,11 @@ export default function AdminDashboard() {
         setLoginError("Authentication service is not available.");
         return;
     };
+
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+        setLoginError("Admin credentials are not configured in the environment.");
+        return;
+    }
 
     if (password !== ADMIN_PASSWORD) {
       setLoginError('Incorrect password. Please try again.');
